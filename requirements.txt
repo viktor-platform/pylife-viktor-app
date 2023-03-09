@@ -1,1 +1,4 @@
 viktor==13.8.0
+pylife
+plotly
+

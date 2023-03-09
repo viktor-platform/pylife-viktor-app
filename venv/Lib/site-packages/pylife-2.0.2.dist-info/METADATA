@@ -1,0 +1,130 @@
+Metadata-Version: 2.1
+Name: pylife
+Version: 2.0.2
+Summary: General Fatigue library
+Home-page: https://github.com/boschresearch/pylife/
+Author: pyLife developer team @ Bosch Research
+Author-email: johannes.mueller4@de.bosch.com
+License: Apache-2
+Project-URL: Documentation, https://pylife.readthedocs.io
+Project-URL: Source, https://github.com/boschresearch/pylife/
+Project-URL: Download, https://pypi.org/project/pylife/#files
+Platform: any
+Classifier: Development Status :: 4 - Beta
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown; charset=UTF-8
+License-File: LICENSE
+License-File: NOTICE
+Requires-Dist: numpy (>=1.23)
+Requires-Dist: scipy
+Requires-Dist: pandas (>=1.4.0)
+Requires-Dist: h5py (!=3.7.0)
+Requires-Dist: matplotlib
+Requires-Dist: cython
+Provides-Extra: all
+Requires-Dist: tsfresh ; extra == 'all'
+Provides-Extra: analysis
+Requires-Dist: flake8 ; extra == 'analysis'
+Requires-Dist: pep8-naming ; extra == 'analysis'
+Provides-Extra: docs
+Requires-Dist: sphinx ; extra == 'docs'
+Requires-Dist: nbsphinx ; extra == 'docs'
+Requires-Dist: nbsphinx-link ; extra == 'docs'
+Requires-Dist: sphinx-rtd-theme (>=1.0) ; extra == 'docs'
+Requires-Dist: plotly ; extra == 'docs'
+Requires-Dist: jupyter-sphinx ; extra == 'docs'
+Requires-Dist: myst-parser ; extra == 'docs'
+Requires-Dist: panel ; extra == 'docs'
+Requires-Dist: pyvista ; extra == 'docs'
+Requires-Dist: xvfbwrapper ; extra == 'docs'
+Provides-Extra: extras
+Requires-Dist: jupyter ; extra == 'extras'
+Requires-Dist: matplotlib ; extra == 'extras'
+Requires-Dist: plotly ; extra == 'extras'
+Provides-Extra: testing
+Requires-Dist: setuptools ; extra == 'testing'
+Requires-Dist: pytest ; extra == 'testing'
+Requires-Dist: pytest-cov ; extra == 'testing'
+Requires-Dist: hypothesis ; extra == 'testing'
+Requires-Dist: pyvista ; extra == 'testing'
+Requires-Dist: panel ; extra == 'testing'
+Requires-Dist: xvfbwrapper ; extra == 'testing'
+Requires-Dist: testbook[dev] ; extra == 'testing'
+Provides-Extra: tsfresh
+Requires-Dist: tsfresh ; extra == 'tsfresh'
+
+# pyLife – a general library for fatigue and reliability
+
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/boschresearch/pylife/develop?labpath=demos%2Findex.ipynb)
+[![Documentation Status](https://readthedocs.org/projects/pylife/badge/?version=latest)](https://pylife.readthedocs.io/en/latest/?badge=latest)
+[![PyPI](https://img.shields.io/pypi/v/pylife)](https://pypi.org/project/pylife/)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/pylife)
+[![testsuite](https://github.com/boschresearch/pylife/workflows/testsuite/badge.svg)](https://github.com/boschresearch/pylife/actions?query=workflow%3Atestsuite)
+
+pyLife is an Open Source Python library for state of the art algorithms used in
+lifetime assessment of mechanical components subject to fatigue load.
+
+
+## Purpose of the project
+
+This library was originally compiled at [Bosch
+Research](https://www.bosch.com/research/) to collect algorithms needed by
+different in house software projects, that deal with lifetime prediction and
+material fatigue on a component level. In order to further extent and
+scrutinize it we decided to release it as Open Source.  Read [this
+article](https://www.bosch.com/stories/bringing-open-source-to-mechanical-engineering/)
+about pyLife's origin.
+
+So we are welcoming collaboration not only from science and education but also
+from other commercial companies dealing with the topic. We commend this library
+to university teachers to use it for education purposes.
+
+
+## Status
+
+pyLife-2.0.1 has been released.  That means that for the time being we hope
+that we will not introduce *breaking* changes.  That does not mean that the
+release is stable finished and perfect.  We will do small improvements,
+especially with respect to documentation in the upcoming months and release
+them as 2.0.x releases.  Once we have noticeable feature additions we will come
+up with a 2.x.0 release.  No ETA about that.
+
+## Contents
+
+There are/will be the following subpackages:
+
+* `stress` everything related to stress calculation
+	* equivalent stress
+	* stress gradient calculation
+	* rainflow counting
+	* ...
+* `strength` everything related to strength calculation
+	* failure probability estimation
+	* S-N-calculations
+	* ...
+* `mesh` FEM mesh related stuff
+    * stress gradients
+	* FEM-mapping
+	* hotspot detection
+* `util` all the more general utilities
+	* ...
+* `materialdata` analysis of material testing data
+    * Wöhler (SN-curve) data analysis
+
+* `materiallaws` modeling material behavior
+    * Ramberg Osgood
+    * Wöhler curves
+
+* `vmap` a interface to [VMAP](https://www.vmap.eu.com/)
+
+
+## License
+
+pyLife is open-sourced under the Apache-2.0 license. See the
+[LICENSE](LICENSE) file for details.
+
+For a list of other open source components included in pyLife, see the
+file [3rd-party-licenses.txt](3rd-party-licenses.txt).
