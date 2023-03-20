@@ -4,10 +4,9 @@
 # or operating system, you probably want to add a global ignore instead:
 #   git config --global core.excludesfile '~/.gitignore_global'
 
-# Python IDE
-.idea/
-.coverage/
 
+# Ignore bundler config.
+/.bundle
 
 # Ignore all logfiles and tempfiles.
 /log/*
@@ -15,15 +14,8 @@
 !/log/.keep
 !/tmp/.keep
 
-# Files that might appear in the root of a volume
-.DocumentRevisions-V100
-.fseventsd
-.Spotlight-V100
-.TemporaryItems
-.Trashes
-.VolumeIcon.icns
-.com.apple.timemachine.donotpresent
-
+# Compiled python code
+*.pyc
 
 # folder form Pycharm 
 .idea/
@@ -32,8 +24,4 @@ env
 venv
 .venv
 
-
-
-# Folder visual studio code
-.vscode/
-
+.coverage
