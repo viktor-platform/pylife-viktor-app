@@ -25,3 +25,6 @@ venv
 .venv
 
 .coverage
+
+# Folder visual studio code
+.vscode/
