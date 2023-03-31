@@ -5,51 +5,63 @@ from pathlib import Path
 import pandas as pd
 import numpy as np
 
-from viktor import ViktorController
+from viktor import (
+    ViktorController,
+    File,
+)
 from viktor.views import (
-    PlotlyResult,
-    PlotlyView,
+    PlotlyAndDataResult,
+    PlotlyAndDataView,
+    DataGroup,
     WebResult,
+    DataItem,
     WebView,
 )
 from viktor.result import (
-    SetParamsResult,
+    DownloadResult,
 )
 
 from viktor.parametrization import (
     ViktorParametrization,
     MultiSelectField,
-    SetParamsButton,
+    DownloadButton,
     BooleanField,
     NumberField,
     OptionField,
+    UserError,
     FileField,
     LineBreak,
-    TextField,
     IsFalse,
     IsTrue,
     Lookup,
-    Table,
     Text,
     Tab,
 )
 
 
 def useFileForData(params, **kwargs):
-    if params.tab1.useSampleData is True:
+    if params.tab2.useSampleData is True:
         parentFolder = Path(__file__).parent  # pylife-viktor-app
         filePath = parentFolder / "fatigue-data-plain.csv"
+        with filePath.open() as f:
+            df = pd.read_csv(filePath, sep="\t")
     else:
-        filePath = params.FileUpload
-    with filePath.open() as f:
+        filePath = params.tab2.fileUpload.file.copy().source
         df = pd.read_csv(filePath, sep="\t")
     df.columns = ["load", "cycles"]
     load_cycle_limit = None  # or for example 1e7
     df = woehler.determine_fractures(df, load_cycle_limit)
-    fatigue_data = df.fatigue_data
-    fatigue_data.fatigue_limit
     return df
 
+def useWohlerFile(params, **kwargs):
+    if not params.tab2.wohlerDataUpload and not params.tab2.useSampleWohler:
+            raise UserError("Please upload/select which wöhler data to use")
+    filePath = params.tab2.wohlerDataUpload.file.copy().source
+    wohlerParameters = pd.read_csv(filePath, sep="\t")
+    wohlerParameters.index = ['k_1', 'ND', 'SD', 'TN', 'TS', 'failure_probability']
+    del wohlerParameters[wohlerParameters.columns[0]]
+    wohlerParameters = wohlerParameters.iloc[:,0]
+    return wohlerParameters
 
 def generateData(woehlerCurve, params, **kwargs):
     cycles = np.logspace(1.0, 8.0, 70)
@@ -59,6 +71,33 @@ def generateData(woehlerCurve, params, **kwargs):
         df.insert(len(df.columns), f"{fp}", new_data)
     return df
 
+def wohlerGenerateData(type, params, **kwargs): 
+    df = useFileForData(params)
+    fatigue_data = df.fatigue_data
+    fatigue_data.fatigue_limit
+    if not params.tab2.useSampleWohler:
+        wohlerData = useWohlerFile(params)
+    elif type=='probit':
+        wohlerData = woehler.Probit(fatigue_data).analyze()
+    elif type=='MaxLike':
+        if params.tab2.maxLikelihoodOption == "Infinite":
+            wohlerData = woehler.MaxLikeInf(fatigue_data).analyze()
+        else:
+            if params.tab3.changeSlope and params.tab3.changeCycleEnduranceLimit and params.tab3.changeLoadEnduranceLimit and params.tab3.changeScatterTN and params.tab3.changeScatterTS:
+                raise UserError("Please leave one of the parameters unfixed for calculations")
+            fixedParams = {}
+            if params.tab3.changeSlope:
+                fixedParams["k_1"] = params.tab3.slopeValue
+            if params.tab3.changeCycleEnduranceLimit:
+                fixedParams["ND"] = params.tab3.cycleEnduranceLimit
+            if params.tab3.changeLoadEnduranceLimit:
+                fixedParams["SD"] = params.tab3.loadEnduranceLimit
+            if params.tab3.changeScatterTN:
+                fixedParams["TN"] = params.tab3.scatterTN
+            if params.tab3.changeScatterTS:
+                fixedParams["TS"] = params.tab3.scatterTS
+            wohlerData = woehler.MaxLikeFull(fatigue_data).analyze(fixed_parameters=fixedParams)
+    return wohlerData
 
 def addWoehlerCurves(woehlerCurve, name, params, **kwargs):
     pd.options.plotting.backend = "plotly"
@@ -80,19 +119,13 @@ def addWoehlerCurves(woehlerCurve, name, params, **kwargs):
                 go.Scatter(
                     x=runouts.cycles, y=runouts.load, mode="markers", name="runouts"
                 ),
-                go.Scatter(
-                    x=[df.cycles.min(), df.cycles.max()],
-                    y=[fatigue_data.fatigue_limit] * 2,
-                    mode="lines",
-                    name="fatigue limit",
-                ),
             ]
         )
         .update_xaxes(type="log")
         .update_yaxes(type="log")
         .update_layout(xaxis_title="Cycles", yaxis_title="Load")
     )
-    for prob in np.sort(params.tab1.failureProbs):
+    for prob in np.sort(params.tab2.failureProbs):
         fig.add_scatter(
             x=cycles,
             y=woehlerCurve.basquin_load(cycles, failure_probability=prob),
@@ -101,85 +134,184 @@ def addWoehlerCurves(woehlerCurve, name, params, **kwargs):
         )
     return fig
 
+def makeDataGroup(wc):
+    dataGroup = DataGroup(
+        DataItem("k_1", wc[0]),
+        DataItem("ND", wc[1]),
+        DataItem("SD", wc[2]),
+        DataItem("TN", wc[3]),
+        DataItem("TS", wc[4])
+    )
+    return dataGroup
+
 
 class Parametrization(ViktorParametrization):
     """Viktor Parametrization"""
 
-    tab1 = Tab("Data Analysis")
+    tab1 = Tab("Introduction")
 
     tab1.text1 = Text(
         """
-# Welcome to the PyLife demonstration app!
+# BOSCH Research: pyLife Fatigue Calculator
 
-This is a sample app demonstrating how PyLife, a package designed by BOSCH Research and made 
-open-source, makes stress and fatigue calculations.
+pyLife is an Open Source Python library for state of the art algorithms used in lifetime assessment
+ of mechanical components subject to fatigue load.
+
+## Purpose of the project
+
+This library was originally compiled at Bosch Research to collect algorithms needed by different in
+ house software projects, that deal with lifetime prediction and material fatigue on a component level.
+ In order to further extent and scrutinize it we decided to release it as Open Source. Read this article about 
+ pyLife’s origin.
+
+So we are welcoming collaboration not only from science and education but also from other commercial 
+companies dealing with the topic. We commend this library to university teachers to use it for education
+ purposes.
+
+ pyLife is designed and programmed by Johannes Mueller and Daniel Kreuter from BOSCH Research, the content
+ of this app is based on the Master Thesis of Mustapha Kassem at TU Müchen. You may find more information on 
+ the content and what functions are used in the pyLife Cookbook at: https://pylife.readthedocs.io/en/stable/cookbook.html
 
         """
     )
 
-    tab1.fileUpload = FileField(
+    tab2 = Tab("Data upload")
+
+    tab2.text2 = Text(
+        """
+## Data Upload and Wöhler selection
+In this section the data can be uploaded and the user may choose to generate
+a wöhler curve based on the data or upload their own. Both files need to be .csv
+and follow the basic structure of the pyLife sample data. Feel free to download
+the sample data in order to have a template for your own data. Same can be done 
+for the wöhler curve in the next section.
+        """
+    )
+
+    tab2.fileUpload = FileField(
         "Upload Fatigue Data",
-        visible=IsFalse(Lookup("tab1.useSampleData")),
+        visible=IsFalse(Lookup("tab2.useSampleData")),
         file_types=[".csv"],
         max_size=5_000_000,
     )
-    tab1.useSampleData = BooleanField(
+    tab2.useSampleData = BooleanField(
         "Use sample data",
+        default=True,
+        flex=20,
+    )
+    tab2.lb1 = LineBreak()
+    tab2.downloadSampleData = DownloadButton(
+        "Download sample data",
+        method="downloadSampleFile",
+        flex=30,
+    )
+
+    tab2.lb2 = LineBreak()
+    tab2.wohlerDataUpload = FileField(
+        "Upload wohler Data",
+        visible=IsFalse(Lookup("tab2.useSampleWohler")),
+        file_types=[".csv"],
+        max_size=5_000_000,
+    )
+    tab2.useSampleWohler = BooleanField(
+        "Use Wöhler curves from data",
         default=True,
         flex=40,
     )
 
-    tab1.lb0 = LineBreak()
-    tab1.failureProbs = MultiSelectField(
+    tab2.lb3 = LineBreak()
+    tab2.failureProbs = MultiSelectField(
         "failure probabilities",
-        visible=IsTrue(Lookup("tab1.useFailureProb")),
+        visible=IsTrue(Lookup("tab2.useFailureProb")),
         options=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
         default=[0.1, 0.5, 0.9],
     )
 
-    tab1.useFailureProb = BooleanField(
-        "Use set failure probabilities",
+    tab2.useFailureProb = BooleanField(
+        "Set failure probabilities",
         default=False,
         flex=40,
     )
 
-    tab1.lb1 = LineBreak()
-    tab1.maxLikelihoodOption = OptionField(
+    tab2.lb4 = LineBreak()
+    tab2.maxLikelihoodOption = OptionField(
         "Infinite or Full",
         options=["Infinite", "Full"],
         default="Infinite",
     )
 
-    tab2 = Tab("Fix Parameters")
-    tab2.text2 = Text(
+    tab3 = Tab("Fix Parameters")
+    tab3.text2 = Text(
         """
 Here you can choose to overwrite the parameters should you be 
-unhappy with the wöhler curves from the data. The Choices can 
-be modified below. Note this only holds for Maximum Likelihood 
-Full.
+unhappy with the wöhler curves from the data. You may choose to upload
+or to overwrite the values in the table below.
         """
     )
 
-    tab2.modifyWoehler = BooleanField(
-        "Fix Parameters",
+    tab3.lb5 = LineBreak()
+    tab3.slopeValue = NumberField(
+        'New value for Slope k_1',
+        visible=IsTrue(Lookup("tab3.changeSlope"))
+        )
+    tab3.changeSlope = BooleanField(
+        "Change Slope k_1",
         default=False,
-        flex=40,
+        flex=30,
     )
 
-    tab2.lbx = LineBreak()
-    tab2.tableOutput = Table(
-        "Table of parameters", visible=IsTrue(Lookup("tab2.modifyWoehler"))
+    tab3.lb6 = LineBreak()
+    tab3.cycleEnduranceLimit = NumberField(
+        'New value for cycle endurance limit ND',
+        visible=IsTrue(Lookup("tab3.changeCycleEnduranceLimit")),
     )
-    tab2.tableOutput.name = TextField("Name")
-    tab2.tableOutput.woehlerParams = NumberField("Parameter Value", num_decimals=1)
+    tab3.changeCycleEnduranceLimit = BooleanField(
+        "Change ND",
+        default=False,
+        flex=30,
+    )
 
-    tab2.lbx = LineBreak()
-    tab2.setParameters = SetParamsButton(
-        "Call/Reset parameters",
-        method="updateParams",
-        visible=IsTrue(Lookup("tab2.modifyWoehler")),
+    tab3.lb7 = LineBreak()
+    tab3.loadEnduranceLimit = NumberField(
+        'New value for load endurance limit SD',
+        visible=IsTrue(Lookup("tab3.changeLoadEnduranceLimit"))
+        )
+    tab3.changeLoadEnduranceLimit = BooleanField(
+        "Change SD",
+        default=False,
+        flex=30,
+    )
+
+    tab3.lb8 = LineBreak()
+    tab3.scatterTN = NumberField(
+        'New value for scatter value TN',
+        visible=IsTrue(Lookup("tab3.changeScatterTN"))
+        )
+    tab3.changeScatterTN = BooleanField(
+        "Change Scatter value TN",
+        default=False,
+        flex=30,
+    )
+
+    tab3.lb9 = LineBreak()
+    tab3.scatterTS = NumberField(
+        'New value for scatter value TS',
+        visible=IsTrue(Lookup("tab3.changeScatterTS"))
+        )
+    tab3.changeScatterTS = BooleanField(
+        "Change Scatter value TS",
+        default=False,
+        flex=30,
+    )
+
+    tab3.lb10 = LineBreak()
+    tab3.downloadWohlerData = DownloadButton(
+        "Download Modified Wöhler Curve Data",
+        method="performDownload",
         flex=100,
     )
+
+
 
 
 class Controller(ViktorController):
@@ -190,53 +322,25 @@ class Controller(ViktorController):
     label = "My Entity Type"
     parametrization = Parametrization
 
-    @PlotlyView("Elementary Analysis", duration_guess=3)
-    def elementaryAnalysisPlotly(self, params, **kwargs):
-        pd.options.plotting.backend = "plotly"
-        df = useFileForData(params)
-        fatigue_data = df.fatigue_data
-        fatigue_data.fatigue_limit
-        elementary_result = woehler.Elementary(fatigue_data).analyze()
-        wc = elementary_result.woehler
-        elementaryFig = addWoehlerCurves(wc, "Elementary", params)
-        return PlotlyResult(elementaryFig.to_json())
-
-    @PlotlyView("Probit", duration_guess=2)
+    @PlotlyAndDataView("Probit", duration_guess=2)
     def probitPlotly(self, params, **kwargs):
+        if not params.tab2.fileUpload and not params.tab2.useSampleData:
+            raise UserError("Please upload/select data to use")
         pd.options.plotting.backend = "plotly"
-        df = useFileForData(params)
-        fatigue_data = df.fatigue_data
-        fatigue_data.fatigue_limit
-        probitResult = woehler.Probit(fatigue_data).analyze()
-        wc = probitResult.woehler
-        probitFig = addWoehlerCurves(wc, "Probit", params)
-        return PlotlyResult(probitFig.to_json())
+        wc = wohlerGenerateData('probit', params)
+        probitFig = addWoehlerCurves(wc.woehler, "Probit", params)
+        return PlotlyAndDataResult(probitFig.to_json(), makeDataGroup(wc))
 
-    @PlotlyView("Maximum Likelihood", duration_guess=2)
+    @PlotlyAndDataView("Maximum Likelihood", duration_guess=2)
     def maxLikelihoodPlotly(self, params, **kwargs):
+        if not params.tab2.fileUpload and not params.tab2.useSampleData:
+            raise UserError("Please upload/select data to use")
         pd.options.plotting.backend = "plotly"
-        df = useFileForData(params)
-        fatigue_data = df.fatigue_data
-        fatigue_data.fatigue_limit
-        if params.tab1.maxLikelihoodOption == "Infinite":
-            maxLikelihoodResult = woehler.MaxLikeInf(fatigue_data).analyze()
-        else:
-            if params.tab2.modifyWoehler is True and len(params.tab2.tableOutput) > 1:
-                fixedParams = {
-                    "k_1": params.tab2.tableOutput[0].woehlerParams,
-                    "ND": params.tab2.tableOutput[1].woehlerParams,
-                    "SD": params.tab2.tableOutput[2].woehlerParams,
-                }
-            else:
-                fixedParams = {}
-            maxLikelihoodResult = woehler.MaxLikeFull(fatigue_data).analyze(
-                fixed_parameters=fixedParams
-            )
-        wc = maxLikelihoodResult.woehler
-        probitFig = addWoehlerCurves(
-            wc, f"MaxLikelihood {params.tab1.maxLikelihoodOption}", params
+        wc = wohlerGenerateData('MaxLike', params)
+        MaxLikeFig = addWoehlerCurves(
+            wc.woehler, f"MaxLikelihood {params.tab2.maxLikelihoodOption}", params
         )
-        return PlotlyResult(probitFig.to_json())
+        return PlotlyAndDataResult(MaxLikeFig.to_json(), makeDataGroup(wc))
 
     @WebView("What's next?", duration_guess=1)
     def whats_next(self, **kwargs):
@@ -246,21 +350,20 @@ class Controller(ViktorController):
             html_string = f.read()
         return WebResult(html=html_string)
 
-    @staticmethod
-    def updateParams(params, **kwargs):
-        df = useFileForData(params)
-        fatigue_data = df.fatigue_data
-        fatigue_data.fatigue_limit
-        maxLikelihoodResult = woehler.MaxLikeFull(fatigue_data).analyze()
+    def performDownload(self, params, **kwargs):
+        maxLikelihoodResult = wohlerGenerateData('MaxLike', params)
+        df = pd.DataFrame(maxLikelihoodResult.values, maxLikelihoodResult.index, columns=['value'])
+        download = df.to_csv(sep='\t')
+        return DownloadResult(download, file_name="woehler_data.csv")
 
-        return SetParamsResult(
-            {
-                "tab2": {
-                    "tableOutput": [
-                        {"name": "K_1", "woehlerParams": maxLikelihoodResult[0]},
-                        {"name": "ND", "woehlerParams": maxLikelihoodResult[1]},
-                        {"name": "SD", "woehlerParams": maxLikelihoodResult[2]},
-                    ]
-                }
-            }
-        )
+    def downloadSampleFile(self, **kwargs): 
+        filePath = Path(__file__).parent/"fatigue-data-plain.csv"
+        sampleData = File.from_path(filePath)
+        return DownloadResult(sampleData, "fatigue-sample-data.csv")
+    
+
+
+
+
+
+
