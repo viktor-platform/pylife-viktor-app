@@ -49,7 +49,10 @@ def useFileForData(params, **kwargs):
         filePath = params.tab2.fileUpload.file.copy().source
         df = pd.read_csv(filePath, sep="\t")
     df.columns = ["load", "cycles"]
-    load_cycle_limit = None  # or for example 1e7
+    if params.tab2.useSetCycleLimit:
+        load_cycle_limit = params.tab2.cycleLimit * 1000000
+    else:
+        load_cycle_limit = None
     df = woehler.determine_fractures(df, load_cycle_limit)
     return df
 
@@ -168,9 +171,11 @@ So we are welcoming collaboration not only from science and education but also f
 companies dealing with the topic. We commend this library to university teachers to use it for education
  purposes.
 
- pyLife is designed and programmed by Johannes Mueller and Daniel Kreuter from BOSCH Research, the content
- of this app is based on the Master Thesis of Mustapha Kassem at TU Müchen. You may find more information on 
- the content and what functions are used in the pyLife Cookbook at: https://pylife.readthedocs.io/en/stable/cookbook.html
+ pyLife is designed and programmed by [Johannes Mueller](https://github.com/johannes-mueller) 
+ (Johannes.Mueller4@de.bosch.com) and [Daniel Kreuter](https://github.com/DKreuter) 
+ (danielchristopher.kreuter@de.bosch.com) from BOSCH Research, the content of this app is based
+ on the Master Thesis of Mustapha Kassem at TU Müchen. You may find more information on the content and what 
+ functions are used in the [pyLife Cookbook](https://pylife.readthedocs.io/en/stable/demos/woehler_analyzer.html#)
 
         """
     )
@@ -197,13 +202,14 @@ for the wöhler curve in the next section.
     tab2.useSampleData = BooleanField(
         "Use sample data",
         default=True,
-        flex=20,
+        flex=30,
     )
     tab2.lb1 = LineBreak()
     tab2.downloadSampleData = DownloadButton(
-        "Download sample data",
+        "Download sample data/template",
         method="downloadSampleFile",
-        flex=30,
+        flex=100,
+        longpoll=True,
     )
 
     tab2.lb2 = LineBreak()
@@ -212,14 +218,30 @@ for the wöhler curve in the next section.
         visible=IsFalse(Lookup("tab2.useSampleWohler")),
         file_types=[".csv"],
         max_size=5_000_000,
+        flex=50
     )
     tab2.useSampleWohler = BooleanField(
         "Use Wöhler curves from data",
         default=True,
-        flex=40,
+        flex=50,
     )
 
     tab2.lb3 = LineBreak()
+    tab2.cycleLimit = NumberField(
+        "Cycle limit (E6)",
+        default=10,
+        flex=50,
+        visible=IsTrue(Lookup("tab2.useSetCycleLimit"))
+    )
+    tab2.useSetCycleLimit = BooleanField(
+        "Set cycle limit",
+        default=False,
+        flex=30,
+    )
+
+
+
+    tab2.lb4 = LineBreak()
     tab2.failureProbs = MultiSelectField(
         "failure probabilities",
         visible=IsTrue(Lookup("tab2.useFailureProb")),
@@ -233,7 +255,7 @@ for the wöhler curve in the next section.
         flex=40,
     )
 
-    tab2.lb4 = LineBreak()
+    tab2.lb5 = LineBreak()
     tab2.maxLikelihoodOption = OptionField(
         "Infinite or Full",
         options=["Infinite", "Full"],
@@ -249,21 +271,23 @@ or to overwrite the values in the table below.
         """
     )
 
-    tab3.lb5 = LineBreak()
+    tab3.lb6 = LineBreak()
     tab3.slopeValue = NumberField(
         'New value for Slope k_1',
-        visible=IsTrue(Lookup("tab3.changeSlope"))
+        visible=IsTrue(Lookup("tab3.changeSlope")),
+        flex=60,
         )
     tab3.changeSlope = BooleanField(
         "Change Slope k_1",
         default=False,
-        flex=30,
+        flex=40,
     )
 
-    tab3.lb6 = LineBreak()
+    tab3.lb7 = LineBreak()
     tab3.cycleEnduranceLimit = NumberField(
         'New value for cycle endurance limit ND',
         visible=IsTrue(Lookup("tab3.changeCycleEnduranceLimit")),
+        flex=60,
     )
     tab3.changeCycleEnduranceLimit = BooleanField(
         "Change ND",
@@ -271,10 +295,11 @@ or to overwrite the values in the table below.
         flex=30,
     )
 
-    tab3.lb7 = LineBreak()
+    tab3.lb8 = LineBreak()
     tab3.loadEnduranceLimit = NumberField(
         'New value for load endurance limit SD',
-        visible=IsTrue(Lookup("tab3.changeLoadEnduranceLimit"))
+        visible=IsTrue(Lookup("tab3.changeLoadEnduranceLimit")),
+        flex=60,
         )
     tab3.changeLoadEnduranceLimit = BooleanField(
         "Change SD",
@@ -282,33 +307,36 @@ or to overwrite the values in the table below.
         flex=30,
     )
 
-    tab3.lb8 = LineBreak()
+    tab3.lb9 = LineBreak()
     tab3.scatterTN = NumberField(
         'New value for scatter value TN',
-        visible=IsTrue(Lookup("tab3.changeScatterTN"))
+        visible=IsTrue(Lookup("tab3.changeScatterTN")),
+        flex=60,
         )
     tab3.changeScatterTN = BooleanField(
         "Change Scatter value TN",
         default=False,
-        flex=30,
+        flex=40,
     )
 
-    tab3.lb9 = LineBreak()
+    tab3.lb10 = LineBreak()
     tab3.scatterTS = NumberField(
         'New value for scatter value TS',
-        visible=IsTrue(Lookup("tab3.changeScatterTS"))
+        visible=IsTrue(Lookup("tab3.changeScatterTS")),
+        flex=60,
         )
     tab3.changeScatterTS = BooleanField(
         "Change Scatter value TS",
         default=False,
-        flex=30,
+        flex=40,
     )
 
-    tab3.lb10 = LineBreak()
+    tab3.lb11 = LineBreak()
     tab3.downloadWohlerData = DownloadButton(
         "Download Modified Wöhler Curve Data",
         method="performDownload",
         flex=100,
+        longpoll=True,
     )
 
 
@@ -361,9 +389,3 @@ class Controller(ViktorController):
         sampleData = File.from_path(filePath)
         return DownloadResult(sampleData, "fatigue-sample-data.csv")
     
-
-
-
-
-
-
