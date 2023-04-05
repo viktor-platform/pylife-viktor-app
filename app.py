@@ -164,19 +164,19 @@ pyLife is an Open Source Python library for state of the art algorithms used in 
 
 This library was originally compiled at Bosch Research to collect algorithms needed by different in
  house software projects, that deal with lifetime prediction and material fatigue on a component level.
- In order to further extent and scrutinize it we decided to release it as Open Source. Read this article about 
- pyLife’s origin.
+ In order to allow for collaboration it was decided to release it as Open Source. Read this article about 
+ [pyLife’s origin](https://www.bosch.com/stories/bringing-open-source-to-mechanical-engineering/) and 
+ how it has become a tool used daily at BOSCH Research.
 
-So we are welcoming collaboration not only from science and education but also from other commercial 
-companies dealing with the topic. We commend this library to university teachers to use it for education
- purposes.
+Not only is collaboration from science and education encouraged, but also from other commercial 
+companies dealing with the topic of fatigue analysis. We commend this library to university teachers to use it 
+for education purposes.
 
  pyLife is designed and programmed by [Johannes Mueller](https://github.com/johannes-mueller) 
  (Johannes.Mueller4@de.bosch.com) and [Daniel Kreuter](https://github.com/DKreuter) 
- (danielchristopher.kreuter@de.bosch.com) from BOSCH Research, the content of this app is based
+ (danielchristopher.kreuter@de.bosch.com) at BOSCH Research, the content of this app is based
  on the Master Thesis of Mustapha Kassem at TU Müchen. You may find more information on the content and what 
- functions are used in the [pyLife Cookbook](https://pylife.readthedocs.io/en/stable/demos/woehler_analyzer.html#)
-
+ functions are used in the [pyLife Cookbook](https://pylife.readthedocs.io/en/stable/demos/woehler_analyzer.html#).
         """
     )
 
@@ -184,7 +184,7 @@ companies dealing with the topic. We commend this library to university teachers
 
     tab2.text2 = Text(
         """
-## Data Upload and Wöhler selection
+## Data Upload and Wöhler Selection
 In this section the data can be uploaded and the user may choose to generate
 a wöhler curve based on the data or upload their own. Both files need to be .csv
 and follow the basic structure of the pyLife sample data. Feel free to download
@@ -265,6 +265,7 @@ for the wöhler curve in the next section.
     tab3 = Tab("Fix Parameters")
     tab3.text2 = Text(
         """
+## Adjust Wöhler Curve Parameters 
 Here you can choose to overwrite the parameters should you be 
 unhappy with the wöhler curves from the data. You may choose to upload
 or to overwrite the values in the table below.
